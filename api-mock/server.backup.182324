@@ -1,0 +1,277 @@
+const express = require("express");
+const cors = require("cors");
+app.use(
+  cors({
+    origin: "http://localhost:3000", // フロントからのリクエストを許可
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
+const cors = require("cors");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const upload = multer();
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// ── 状態（MVP: メモリ＋ファイル保存） ─────────────────────
+const DATA_DIR = path.join(__dirname, "datasets");
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+const state = {
+  totals: { sessions: 0, users: 0, conversions: 0, revenue: 0 },
+  lastDatasetId: null,
+};
+
+// ── ユーティリティ：超簡易CSVパース（UTF-8, カンマ） ──
+// 本番は csv-parse 等の利用を推奨
+function parseCsv(text) {
+  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter(l => l.trim() !== "");
+  if (!lines.length) return { headers: [], rows: [] };
+  const split = (line) => {
+    const out = [];
+    let cur = "", inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else { inQ = !inQ; } }
+      else if (ch === ',' && !inQ) { out.push(cur); cur = ""; }
+      else { cur += ch; }
+    }
+    out.push(cur);
+    return out;
+  };
+  const headers = split(lines[0]).map(h => h.trim());
+  const rows = lines.slice(1).map(l => split(l));
+  return { headers, rows };
+}
+
+function toNumber(x) {
+  if (x === null || x === undefined) return 0;
+  const n = Number(String(x).replace(/[,¥$]/g, "")); // 通貨/カンマ除去
+  return isNaN(n) ? 0 : n;
+}
+
+// ── ダッシュボード（集計があればそれを使用） ────────────────
+app.get("/dashboard", (_req, res) => {
+  const hasData = (state.totals.sessions + state.totals.users + state.totals.conversions + state.totals.revenue) > 0;
+
+  const kpis = hasData
+    ? [
+        { label: "問い合わせ", value: state.totals.conversions, target: 50 },
+        { label: "応募", value: state.totals.conversions, target: 20 },
+        { label: "売上(万)", value: Math.round(state.totals.revenue / 10000), target: 300 },
+      ]
+    : [
+        { label: "問い合わせ", value: 31, target: 50 },
+        { label: "応募", value: 12, target: 20 },
+        { label: "売上(万)", value: 180, target: 300 },
+      ];
+
+  res.json({
+    kpis,
+    recommendations: [
+      { id: "rec1", title: "トップにCTA追加", description: "予約導線を上部固定" },
+      { id: "rec2", title: "SNSハッシュタグ最適化", description: "検索ボリューム重視" },
+    ],
+    latestSamples: [
+      { id: "cs1", title: "ブログ：秋のキャンペーン告知", date: "2025-10-05", summary: "キャンペーン概要＋CTA" },
+    ],
+    meta: { lastDatasetId: state.lastDatasetId, totals: state.totals },
+  });
+});
+
+// ── CSV取り込み（保存＆集計） ───────────────────────────
+app.post("/ingest/csv", upload.single("file"), (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: "file is required" });
+    }
+    const mapping = req.body?.mapping ? JSON.parse(req.body.mapping) : null;
+    const text = req.file.buffer.toString("utf8");
+    const { headers, rows } = parseCsv(text);
+    if (!headers.length) return res.status(400).json({ error: "empty csv" });
+
+    // マッピング（ヘッダー→意味）を構築
+    // mapping = { headers: [...], mapping: ["date","source",...]}
+    let meaningByIndex = [];
+    if (mapping && Array.isArray(mapping.headers) && Array.isArray(mapping.mapping)) {
+      meaningByIndex = mapping.headers.map((_, i) => mapping.mapping[i] || "ignore");
+    } else {
+      // ざっくり自動推定（fallback）
+      meaningByIndex = headers.map(h => {
+        const hh = h.toLowerCase();
+        if (hh === "date" || /日付/.test(hh)) return "date";
+        if (hh === "source") return "source";
+        if (hh === "medium") return "medium";
+        if (/channel/.test(hh)) return "channel_group";
+        if (/^sessions?$|セッション/.test(hh)) return "sessions";
+        if (/^users?$|ユーザ/.test(hh)) return "users";
+        if (/^conv|^conversions?$|cv\b|成約|応募|問い合わせ/.test(hh)) return "conversions";
+        if (/revenue|売上|金額|amount/.test(hh)) return "revenue";
+        return "ignore";
+      });
+    }
+
+    // 合計計算
+    let totals = { sessions: 0, users: 0, conversions: 0, revenue: 0 };
+    for (const row of rows) {
+      row.forEach((val, idx) => {
+        const key = meaningByIndex[idx];
+        if (!key || key === "ignore") return;
+        if (key === "sessions" || key === "users" || key === "conversions" || key === "revenue") {
+          totals[key] += toNumber(val);
+        }
+      });
+    }
+
+    // 保存（ファイル + 状態更新）
+    const id = `ds_${Date.now()}`;
+    const savePath = path.join(DATA_DIR, `${id}.csv`);
+    fs.writeFileSync(savePath, text, "utf8");
+    state.totals = totals;
+    state.lastDatasetId = id;
+
+    console.log("📥 CSV ingest:", {
+      id, filename: req.file.originalname, size: req.file.size, totals,
+    });
+
+    return res.json({ dataset_id: id, totals });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "ingest failed" });
+  }
+});
+
+// ── Recon（URLクロール風の仮実装）───────────────────────────
+app.post("/recon", async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: "url is required" });
+
+    // 仮のダミー処理（本番は実際のクローリングに置き換える）
+    console.log("🔍 Recon start:", url);
+
+    // ここでは単純に fetch してタイトルを抽出するデモ
+    const response = await fetch(url);
+    const html = await response.text();
+    const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+    const title = titleMatch ? titleMatch[1] : "No title";
+
+    res.json({
+      url,
+      title,
+      status: response.status,
+      discovered_links: ["https://example.com/about", "https://example.com/contact"],
+    });
+  } catch (err) {
+    console.error("❌ Recon failed:", err);
+    res.status(500).json({ error: "crawl failed" });
+  }
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`✅ API mock running on port ${PORT}`));
+
+// ── URLクローリング簡易API ─────────────────────────────
+app.post("/recon", express.json(), async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url || !/^https?:\/\//.test(url)) {
+      return res.status(400).json({ error: "有効なURLを指定してください。" });
+    }
+
+    console.log("🕷 クローリング開始:", url);
+
+    const resp = await fetch(url, { timeout: 10000 });
+    const html = await resp.text();
+
+    // タイトルとmeta descriptionをざっくり抽出
+    const title = html.match(/<title>(.*?)<\/title>/i)?.[1] || "タイトル不明";
+    const desc =
+      html.match(/<meta\s+name=["']description["']\s+content=["'](.*?)["']/i)?.[1] ||
+      "説明文なし";
+
+    // ダミーで簡易スコアも付けて返す
+    const score = Math.floor(Math.random() * 100);
+
+    res.json({
+      url,
+      title,
+      desc,
+      score,
+      analyzedAt: new Date().toISOString(),
+    });
+
+    console.log("✅ クローリング完了:", { url, score });
+  } catch (e) {
+    console.error("❌ クローリング失敗:", e);
+    res.status(500).json({ error: "クローリングに失敗しました。" });
+  }
+});
+// ── URLクローリング簡易API（修正版：Abort + UA + redirect） ─────────
+app.post("/recon", express.json(), async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (!url || !/^https?:\/\//.test(url)) {
+      return res.status(400).json({ error: "有効なURLを指定してください。" });
+    }
+
+    console.log("🕷 クローリング開始:", url);
+
+    // AbortControllerでタイムアウト制御（12秒）
+    const controller = new AbortController();
+    const killer = setTimeout(() => controller.abort(), 12_000);
+
+    const resp = await fetch(url, {
+      redirect: "follow",
+      // ブロック回避のためのUA（一般的なChrome UAに近づける）
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 DMCC-MVP",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(killer);
+
+    if (!resp.ok) {
+      return res.status(400).json({ error: `HTTP ${resp.status}` });
+    }
+
+    const html = await resp.text();
+
+    // 超軽量抽出（regex）。本格は cheerio へ置換予定
+    const title =
+      html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || "";
+    const desc =
+      html.match(
+        /<meta[^>]+name=["']description["'][^>]*content=["']([^"']+)["']/i
+      )?.[1]?.trim() ||
+      html.match(
+        /<meta[^>]+property=["']og:description["'][^>]*content=["']([^"']+)["']/i
+      )?.[1]?.trim() ||
+      "";
+
+    // ダミースコア
+    const score = Math.floor(Math.random() * 100);
+
+    const payload = {
+      url,
+      title,
+      desc,
+      score,
+      analyzedAt: new Date().toISOString(),
+    };
+
+    console.log("✅ クローリング完了:", { url, score });
+    return res.json(payload);
+  } catch (e) {
+    console.error("❌ クローリング失敗:", e);
+    // Abort の場合でも文字列化して返す
+    return res.status(500).json({ error: String(e) });
+  }
+});
