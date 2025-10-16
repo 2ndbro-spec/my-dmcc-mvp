@@ -13,7 +13,10 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  /* 手動トグルが常に勝つ */
+  :root { color-scheme: light; }
+  .dark { 
+    color-scheme: dark;
     --background: #0a0a0a;
     --foreground: #ededed;
   }
