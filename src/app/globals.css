@@ -27,3 +27,41 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===== DMCC Theme (Denno Blue) ===== */
+:root{
+  --brand-600:#1e3a8a; /* 電脳ブルー(濃) */
+  --brand-500:#2563eb; /* ボタン/リンク */
+  --brand-400:#60a5fa; /* ライン/装飾 */
+  --ok-600:#059669;     /* Good */
+  --warn-600:#b45309;   /* Fair */
+  --bad-600:#dc2626;    /* Poor */
+  --muted:#6b7280;      /* サブテキスト */
+  --card-bg:#ffffff;
+  --card-bd:#e5e7eb;
+  --card-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+
+/* 共通カード */
+.dmcc-card{
+  background:var(--card-bg);
+  border:1px solid var(--card-bd);
+  border-radius:14px;
+  box-shadow:var(--card-shadow);
+}
+.dmcc-title{ font-weight:600; color:#111827; }
+.dmcc-sub{ font-size:12px; color:var(--muted); }
+
+/* スコアのトーン */
+.tone-good{ color:var(--ok-600); }
+.tone-fair{ color:var(--warn-600); }
+.tone-bad{  color:var(--bad-600); }
+.tone-brand{color:var(--brand-500);}
+
+/* バッジ */
+.badge {
+  font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--card-bd);
+}
+.badge-good{  color:var(--ok-600);   background:#ecfdf5; border-color:#a7f3d0; }
+.badge-fair{  color:var(--warn-600); background:#fffbeb; border-color:#fcd34d; }
+.badge-bad{   color:var(--bad-600);  background:#fef2f2; border-color:#fecaca; }

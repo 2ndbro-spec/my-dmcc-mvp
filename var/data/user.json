@@ -1,0 +1,4 @@
+// var/config/user.json
+{
+ "schedule": { "schedule": "daily", "hour": 3, "minute": 0 }
+}

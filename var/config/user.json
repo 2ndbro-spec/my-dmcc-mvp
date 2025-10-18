@@ -1,0 +1,19 @@
+{
+  "email": {
+    "to": "ktanaka.denno@gmail.com",
+    "from": "tanaka@dennoworks.com",
+    "fromName": "DMCC Bot"
+  },
+  "schedule": {
+    "schedule": "weekly",
+    "hour": 4,
+    "minute": 30,
+    "dow": 1
+  },
+  "site": {
+    "url": "https://example.com"
+  },
+  "targets": [
+    "https://example.com"
+  ]
+}

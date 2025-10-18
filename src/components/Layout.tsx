@@ -3,6 +3,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+// components/Layout.tsx 抜粋
+import { PATHS } from "@/config/routes";
+
+<nav>
+  <a href={PATHS.dashboard}>Dashboard</a>
+  <a href={PATHS.reports}>Reports</a>
+  <a href={PATHS.settings}>Settings</a>
+  <a href={PATHS.admin}>Admin</a>
+</nav>
 
 const navItems = [
   { name: "Dashboard", path: "/" },

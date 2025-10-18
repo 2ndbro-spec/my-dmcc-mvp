@@ -1,0 +1,13 @@
+{
+  "tokens": {
+    "access_token": "",
+    "refresh_token": "",
+    "expiry_date": 0
+  },
+  "ga": {
+    "propertyId": ""
+  },
+  "gsc": {
+    "siteUrl": ""
+  }
+}
