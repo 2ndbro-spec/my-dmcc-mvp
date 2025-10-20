@@ -1,5 +1,6 @@
-"use client";
+// src/app/dashboard/pae.tsx
 
+import { fetchGA4SessionsUsers } from '@/lib/ga4';
 import ScoreRing from "@/components/dashboard/ScoreRing";
 import ScoreCard from "@/components/dashboard/ScoreCard";
 import GA4Widget from "@/components/GA4Widget";
@@ -25,7 +26,11 @@ const mock = {
 
 // …冒頭のimportとmockはそのまま…
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const ga4Data = await fetchGA4SessionsUsers();
+
+  // テスト表示（本番ではUIに組み込む）
+  console.log('GA4データ', ga4Data);
   return (
     <div className="p-6 grid grid-cols-[360px_1fr_1fr] grid-rows-[420px_220px] gap-6 h-[calc(100vh-100px)]">
       {/* 左カラム */}
