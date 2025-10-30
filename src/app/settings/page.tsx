@@ -9,8 +9,7 @@ const fetcher = async (url: string) => {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Fetch failed: " + res.status);
   return res.json();
-}
-const fetcher = (u: string) => fetch(u).then(r => r.json());
+};
 
 // タブの骨組み（既存）
 function Tabs({ tab, setTab }: { tab: string; setTab: (v: string) => void }) {
@@ -111,20 +110,3 @@ export default function SettingsPage() {
           />
           時
           <input
-            name="schedule.minute"
-            defaultValue={data?.schedule?.minute ?? 0}
-            type="number"
-            min={0}
-            max={59}
-            className="ml-2 w-20 border rounded px-2 py-1"
-          />
-          分
-        </fieldset>
-
-        <button className="px-4 py-2 rounded bg-blue-600 text-white w-fit">
-          保存
-        </button>
-      </form>
-    </div>
-  );
-}
