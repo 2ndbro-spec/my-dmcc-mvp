@@ -12,6 +12,7 @@
     "@google-analytics/data": "^5.2.1",
     "@pdf-lib/fontkit": "^1.1.1",
     "@react-pdf/renderer": "^4.3.1",
+    "cron-parser": "^5.4.0",
     "framer-motion": "^12.23.24",
     "googleapis": "^164.0.0",
     "lucide-react": "^0.545.0",
