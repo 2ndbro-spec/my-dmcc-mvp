@@ -24,6 +24,7 @@
     "puppeteer": "^24.24.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-tooltip": "^5.30.0",
     "recharts": "^3.2.1",
     "sharp": "^0.34.4",
     "swr": "^2.3.6"
@@ -35,6 +36,7 @@
     "@types/nodemailer": "^7.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-tooltip": "^3.11.0",
     "autoprefixer": "^10.4.21",
     "cross-env": "^7.0.3",
     "eslint": "^9",

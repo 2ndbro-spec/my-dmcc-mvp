@@ -4,6 +4,12 @@ import { signIn } from "next-auth/react";
 import { GoogleConnectCard } from "@/components/settings/GoogleConnectCard";
 import GA4Widget from "@/components/GA4Widget";  // ← 追加
 
+const fetcher = async (url: string) => {
+  if (!url) throw new Error("URL is undefined!");
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Fetch failed: " + res.status);
+  return res.json();
+}
 const fetcher = (u: string) => fetch(u).then(r => r.json());
 
 // タブの骨組み（既存）
